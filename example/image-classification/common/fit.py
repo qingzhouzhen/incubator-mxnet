@@ -73,7 +73,7 @@ def add_fit_args(parser):
                        help='list of gpus to run, e.g. 0 or 0,2,5. empty means using cpu')
     train.add_argument('--kv-store', type=str, default='device',
                        help='key-value store type')
-    train.add_argument('--num-epochs', type=int, default=100,
+    train.add_argument('--num-epochs', type=int, default=125,
                        help='max num of epochs')
     train.add_argument('--lr', type=float, default=0.1,
                        help='initial learning rate')
@@ -81,7 +81,7 @@ def add_fit_args(parser):
                        help='the ratio to reduce lr on each step')
     train.add_argument('--lr-step-epochs', type=str,
                        help='the epochs to reduce the lr, e.g. 30,60')
-    train.add_argument('--optimizer', type=str, default='sgd',
+    train.add_argument('--optimizer', type=str, default='nag',
                        help='the optimizer type')
     train.add_argument('--mom', type=float, default=0.9,
                        help='momentum for sgd')
@@ -186,7 +186,7 @@ def fit(args, network, data_loader, **kwargs):
     # initializer   = mx.init.Xavier(factor_type="in", magnitude=2.34),
 
     # evaluation metrices
-    eval_metrics = ['accuracy']
+    eval_metrics = ['accuracy','ce']
     if args.top_k > 0:
         eval_metrics.append(mx.metric.create('top_k_accuracy', top_k=args.top_k))
 

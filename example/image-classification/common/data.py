@@ -45,13 +45,13 @@ def add_data_aug_args(parser):
                      help='if or not randomly crop the image')
     aug.add_argument('--random-mirror', type=int, default=1,
                      help='if or not randomly flip horizontally')
-    aug.add_argument('--max-random-h', type=int, default=0,
+    aug.add_argument('--max-random-h', type=int, default=36,
                      help='max change of hue, whose range is [0, 180]')
-    aug.add_argument('--max-random-s', type=int, default=0,
+    aug.add_argument('--max-random-s', type=int, default=50,
                      help='max change of saturation, whose range is [0, 255]')
-    aug.add_argument('--max-random-l', type=int, default=0,
+    aug.add_argument('--max-random-l', type=int, default=50,
                      help='max change of intensity, whose range is [0, 255]')
-    aug.add_argument('--max-random-aspect-ratio', type=float, default=0,
+    aug.add_argument('--max-random-aspect-ratio', type=float, default=0.25,
                      help='max change of aspect ratio, whose range is [0, 1]')
     aug.add_argument('--max-random-rotate-angle', type=int, default=0,
                      help='max angle to rotate, whose range is [0, 360]')
@@ -59,7 +59,7 @@ def add_data_aug_args(parser):
                      help='max ratio to shear, whose range is [0, 1]')
     aug.add_argument('--max-random-scale', type=float, default=1,
                      help='max ratio to scale')
-    aug.add_argument('--min-random-scale', type=float, default=1,
+    aug.add_argument('--min-random-scale', type=float, default=0.667,
                      help='min ratio to scale, should >= img_size/input_shape. otherwise use --pad-size')
     return aug
 
@@ -116,13 +116,9 @@ def get_rec_iter(args, kv=None):
         (rank, nworker) = (kv.rank, kv.num_workers)
     else:
         (rank, nworker) = (0, 1)
-    rgb_mean = [float(i) for i in args.rgb_mean.split(',')]
     train = mx.io.ImageRecordIter(
         path_imgrec         = args.data_train,
         label_width         = 1,
-        mean_r              = rgb_mean[0],
-        mean_g              = rgb_mean[1],
-        mean_b              = rgb_mean[2],
         data_name           = 'data',
         label_name          = 'softmax_label',
         data_shape          = image_shape,
@@ -148,9 +144,6 @@ def get_rec_iter(args, kv=None):
     val = mx.io.ImageRecordIter(
         path_imgrec         = args.data_val,
         label_width         = 1,
-        mean_r              = rgb_mean[0],
-        mean_g              = rgb_mean[1],
-        mean_b              = rgb_mean[2],
         data_name           = 'data',
         label_name          = 'softmax_label',
         batch_size          = args.batch_size,

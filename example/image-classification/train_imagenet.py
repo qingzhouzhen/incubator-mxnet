@@ -31,7 +31,7 @@ if __name__ == '__main__':
     data.add_data_args(parser)
     data.add_data_aug_args(parser)
     # use a large aug level
-    data.set_data_aug_level(parser, 3)
+    data.set_data_aug_level(parser, 2)
     parser.set_defaults(
         # network
         network          = 'resnet',
@@ -43,8 +43,8 @@ if __name__ == '__main__':
         min_random_scale = 1, # if input image has min size k, suggest to use
                               # 256.0/x, e.g. 0.533 for 480
         # train
-        num_epochs       = 80,
-        lr_step_epochs   = '30,60',
+        num_epochs       = 125,
+        lr_step_epochs   = '30,60,90,95,115,120',
         dtype            = 'float32'
     )
     args = parser.parse_args()
