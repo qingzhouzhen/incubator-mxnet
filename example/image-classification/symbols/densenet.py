@@ -1,62 +1,166 @@
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-
 import mxnet as mx
+import math
 
-def Conv(data, num_filter=1, kernel=(1, 1), stride=(1, 1), pad=(0, 0), num_group=1, name=None, suffix=''):
-    conv = mx.sym.Convolution(data=data, num_filter=num_filter, kernel=kernel, num_group=num_group, stride=stride, pad=pad, no_bias=True, name='%s%s_conv2d' %(name, suffix))
-    bn = mx.sym.BatchNorm(data=conv, name='%s%s_batchnorm' %(name, suffix), fix_gamma=True)
-    act = mx.sym.Activation(data=bn, act_type='relu', name='%s%s_relu' %(name, suffix))
-    return act
+def BasicBlock(data, growth_rate, stride, name, bottle_neck=True, drop_out=0.0, bn_mom=0.9, workspace=512):
+    """Return BaiscBlock Unit symbol for building DenseBlock
+    Parameters
+    ----------
+    data : str
+        Input data
+    growth_rate : int
+        Number of output channels
+    stride : tupe
+        Stride used in convolution
+    drop_out : float
+        Probability of an element to be zeroed. Default = 0.2
+    name : str
+        Base name of the operators
+    workspace : int
+        Workspace used in convolution operator
+    """
+    # import pdb
+    # pdb.set_trace()
 
-def get_symbol(num_classes, **kwargs):
-    data = mx.symbol.Variable(name="data") # 224
-    conv_1 = Conv(data, num_filter=32, kernel=(3, 3), pad=(1, 1), stride=(2, 2), name="conv_1") # 224/112
-    conv_2_dw = Conv(conv_1, num_group=32, num_filter=32, kernel=(3, 3), pad=(1, 1), stride=(1, 1), name="conv_2_dw") # 112/112
-    conv_2 = Conv(conv_2_dw, num_filter=64, kernel=(1, 1), pad=(0, 0), stride=(1, 1), name="conv_2") # 112/112
-    conv_3_dw = Conv(conv_2, num_group=64, num_filter=64, kernel=(3, 3), pad=(1, 1), stride=(2, 2), name="conv_3_dw") # 112/56
-    conv_3 = Conv(conv_3_dw, num_filter=128, kernel=(1, 1), pad=(0, 0), stride=(1, 1), name="conv_3") # 56/56
-    conv_4_dw = Conv(conv_3, num_group=128, num_filter=128, kernel=(3, 3), pad=(1, 1), stride=(1, 1), name="conv_4_dw") # 56/56
-    conv_4 = Conv(conv_4_dw, num_filter=128, kernel=(1, 1), pad=(0, 0), stride=(1, 1), name="conv_4") # 56/56
-    conv_5_dw = Conv(conv_4, num_group=128, num_filter=128, kernel=(3, 3), pad=(1, 1), stride=(2, 2), name="conv_5_dw") # 56/28
-    conv_5 = Conv(conv_5_dw, num_filter=256, kernel=(1, 1), pad=(0, 0), stride=(1, 1), name="conv_5") # 28/28
-    conv_6_dw = Conv(conv_5, num_group=256, num_filter=256, kernel=(3, 3), pad=(1, 1), stride=(1, 1), name="conv_6_dw") # 28/28
-    conv_6 = Conv(conv_6_dw, num_filter=256, kernel=(1, 1), pad=(0, 0), stride=(1, 1), name="conv_6") # 28/28
-    conv_7_dw = Conv(conv_6, num_group=256, num_filter=256, kernel=(3, 3), pad=(1, 1), stride=(2, 2), name="conv_7_dw") # 28/14
-    conv_7 = Conv(conv_7_dw, num_filter=512, kernel=(1, 1), pad=(0, 0), stride=(1, 1), name="conv_7") # 14/14
+    if bottle_neck:
+        # the same as https://github.com/facebook/fb.resnet.torch#notes, a bit difference with origin paper
+        bn1 = mx.sym.BatchNorm(data=data, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_bn1')
+        act1 = mx.sym.Activation(data=bn1, act_type='relu', name=name + '_relu1')
+        conv1 = mx.sym.Convolution(data=act1, num_filter=int(growth_rate * 4), kernel=(1, 1), stride=(1, 1), pad=(0, 0),
+                                   no_bias=True, workspace=workspace, name=name + '_conv1')
+        if drop_out > 0:
+            conv1 = mx.symbol.Dropout(data=conv1, p=drop_out, name=name + '_dp1')
+        bn2 = mx.sym.BatchNorm(data=conv1, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_bn2')
+        act2 = mx.sym.Activation(data=bn2, act_type='relu', name=name + '_relu2')
+        conv2 = mx.sym.Convolution(data=act2, num_filter=int(growth_rate), kernel=(3, 3), stride=stride, pad=(1, 1),
+                                   no_bias=True, workspace=workspace, name=name + '_conv2')
+        if drop_out > 0:
+            conv2 = mx.symbol.Dropout(data=conv2, p=drop_out, name=name + '_dp2')
+        # return mx.symbol.Concat(data, conv2, name=name + '_concat0')
+        return conv2
+    else:
+        bn1 = mx.sym.BatchNorm(data=data, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_bn1')
+        act1 = mx.sym.Activation(data=bn1, act_type='relu', name=name + '_relu1')
+        conv1 = mx.sym.Convolution(data=act1, num_filter=int(growth_rate), kernel=(3, 3), stride=(1, 1), pad=(1, 1),
+                                   no_bias=True, workspace=workspace, name=name + '_conv1')
+        if drop_out > 0:
+            conv1 = mx.symbol.Dropout(data=conv1, p=drop_out, name=name + '_dp1')
+        # return mx.symbol.Concat(data, conv1, name=name + '_concat0')
+        return conv1
 
-    conv_8_dw = Conv(conv_7, num_group=512, num_filter=512, kernel=(3, 3), pad=(1, 1), stride=(1, 1), name="conv_8_dw") # 14/14
-    conv_8 = Conv(conv_8_dw, num_filter=512, kernel=(1, 1), pad=(0, 0), stride=(1, 1), name="conv_8") # 14/14
-    conv_9_dw = Conv(conv_8, num_group=512, num_filter=512, kernel=(3, 3), pad=(1, 1), stride=(1, 1), name="conv_9_dw") # 14/14
-    conv_9 = Conv(conv_9_dw, num_filter=512, kernel=(1, 1), pad=(0, 0), stride=(1, 1), name="conv_9") # 14/14
-    conv_10_dw = Conv(conv_9, num_group=512, num_filter=512, kernel=(3, 3), pad=(1, 1), stride=(1, 1), name="conv_10_dw") # 14/14
-    conv_10 = Conv(conv_10_dw, num_filter=512, kernel=(1, 1), pad=(0, 0), stride=(1, 1), name="conv_10") # 14/14
-    conv_11_dw = Conv(conv_10, num_group=512, num_filter=512, kernel=(3, 3), pad=(1, 1), stride=(1, 1), name="conv_11_dw") # 14/14
-    conv_11 = Conv(conv_11_dw, num_filter=512, kernel=(1, 1), pad=(0, 0), stride=(1, 1), name="conv_11") # 14/14
-    conv_12_dw = Conv(conv_11, num_group=512, num_filter=512, kernel=(3, 3), pad=(1, 1), stride=(1, 1), name="conv_12_dw") # 14/14
-    conv_12 = Conv(conv_12_dw, num_filter=512, kernel=(1, 1), pad=(0, 0), stride=(1, 1), name="conv_12") # 14/14
 
-    conv_13_dw = Conv(conv_12, num_group=512, num_filter=512, kernel=(3, 3), pad=(1, 1), stride=(2, 2), name="conv_13_dw") # 14/7
-    conv_13 = Conv(conv_13_dw, num_filter=1024, kernel=(1, 1), pad=(0, 0), stride=(1, 1), name="conv_13") # 7/7
-    conv_14_dw = Conv(conv_13, num_group=1024, num_filter=1024, kernel=(3, 3), pad=(1, 1), stride=(1, 1), name="conv_14_dw") # 7/7
-    conv_14 = Conv(conv_14_dw, num_filter=1024, kernel=(1, 1), pad=(0, 0), stride=(1, 1), name="conv_14") # 7/7
+def DenseBlock(units_num, data, growth_rate, name, bottle_neck=True, drop_out=0.0, bn_mom=0.9, workspace=512):
+    """Return DenseBlock Unit symbol for building DenseNet
+    Parameters
+    ----------
+    units_num : int
+        the number of BasicBlock in each DenseBlock
+    data : str
+        Input data
+    growth_rate : int
+        Number of output channels
+    drop_out : float
+        Probability of an element to be zeroed. Default = 0.2
+    workspace : int
+        Workspace used in convolution operator
+    """
+    # import pdb
+    # pdb.set_trace()
 
-    pool = mx.sym.Pooling(data=conv_14, kernel=(7, 7), stride=(1, 1), pool_type="avg", name="global_pool")
-    flatten = mx.sym.Flatten(data=pool, name="flatten")
-    fc = mx.symbol.FullyConnected(data=flatten, num_hidden=num_classes, name='fc')
-    softmax = mx.symbol.SoftmaxOutput(data=fc, name='softmax')
-    return softmax
+    for i in range(units_num):
+        Block = BasicBlock(data, growth_rate=growth_rate, stride=(1, 1), name=name + '_unit%d' % (i + 1),
+                           bottle_neck=bottle_neck, drop_out=drop_out,
+                           bn_mom=bn_mom, workspace=workspace)
+        data = mx.symbol.Concat(data, Block, name=name + '_concat%d' % (i + 1))
+    return data
+
+
+def TransitionBlock(num_stage, data, num_filter, stride, name, drop_out=0.0, bn_mom=0.9, workspace=512):
+    """Return TransitionBlock Unit symbol for building DenseNet
+    Parameters
+    ----------
+    num_stage : int
+        Number of stage
+    data : str
+        Input data
+    num : int
+        Number of output channels
+    stride : tupe
+        Stride used in convolution
+    name : str
+        Base name of the operators
+    drop_out : float
+        Probability of an element to be zeroed. Default = 0.2
+    workspace : int
+        Workspace used in convolution operator
+    """
+    bn1 = mx.sym.BatchNorm(data=data, fix_gamma=False, eps=2e-5, momentum=bn_mom, name=name + '_bn1')
+    act1 = mx.sym.Activation(data=bn1, act_type='relu', name=name + '_relu1')
+    conv1 = mx.sym.Convolution(data=act1, num_filter=num_filter,
+                               kernel=(1, 1), stride=stride, pad=(0, 0), no_bias=True,
+                               workspace=workspace, name=name + '_conv1')
+    if drop_out > 0:
+        conv1 = mx.symbol.Dropout(data=conv1, p=drop_out, name=name + '_dp1')
+    return mx.symbol.Pooling(conv1, global_pool=False, kernel=(2, 2), stride=(2, 2), pool_type='avg',
+                             name=name + '_pool%d' % (num_stage + 1))
+
+
+def get_symbol(num_classes, num_layers=121, reduction=0.5, drop_out=0.2, bottle_neck=True, bn_mom=0.9, 
+                            workspace=512, num_stage=4, growth_rate=32,  **kwargs):
+    """Return DenseNet symbol of imagenet
+    Parameters
+    ----------
+    units : list
+        Number of units in each stage
+    num_stage : int
+        Number of stage
+    growth_rate : int
+        Number of output channels
+    num_class : int
+        Ouput size of symbol
+    data_type : str
+        the type of dataset
+    reduction : float
+        Compression ratio. Default = 0.5
+    drop_out : float
+        Probability of an element to be zeroed. Default = 0.2
+    workspace : int
+        Workspace used in convolution operator
+    """
+
+    if num_layers == 121:
+        units = [6, 12, 24, 16]
+    elif num_layers == 169:
+        units = [6, 12, 32, 32]
+    elif num_layers == 201:
+        units = [6, 12, 48, 16]
+    elif num_layers == 264:
+        units = [6, 12, 64, 48]
+    else:
+        raise ValueError('please specify num-layers, 121,169, 201, or 264') 
+
+    num_unit = len(units)
+    assert (num_unit == num_stage)
+    init_channels = 2 * growth_rate
+    n_channels = init_channels
+    data = mx.sym.Variable(name='data')
+    data = mx.sym.BatchNorm(data=data, fix_gamma=True, eps=2e-5, momentum=bn_mom, name='bn_data')
+    body = mx.sym.Convolution(data=data, num_filter=growth_rate * 2, kernel=(7, 7), stride=(2, 2), pad=(3, 3),
+                              no_bias=True, name="conv0", workspace=workspace)
+    body = mx.sym.BatchNorm(data=body, fix_gamma=False, eps=2e-5, momentum=bn_mom, name='bn0')
+    body = mx.sym.Activation(data=body, act_type='relu', name='relu0')
+    body = mx.symbol.Pooling(data=body, kernel=(3, 3), stride=(2, 2), pad=(1, 1), pool_type='max')
+    for i in range(num_stage - 1):
+        body = DenseBlock(units[i], body, growth_rate=growth_rate, name='DBstage%d' % (i + 1), bottle_neck=bottle_neck,
+                          drop_out=drop_out, bn_mom=bn_mom, workspace=workspace)
+        n_channels += units[i] * growth_rate
+        n_channels = int(math.floor(n_channels * reduction))
+        body = TransitionBlock(i, body, n_channels, stride=(1, 1), name='TBstage%d' % (i + 1), drop_out=drop_out,
+                               bn_mom=bn_mom, workspace=workspace)
+    body = DenseBlock(units[num_stage - 1], body, growth_rate=growth_rate, name='DBstage%d' % (num_stage),
+                      bottle_neck=bottle_neck, drop_out=drop_out, bn_mom=bn_mom, workspace=workspace)
+    bn1 = mx.sym.BatchNorm(data=body, fix_gamma=False, eps=2e-5, momentum=bn_mom, name='bn1')
+    relu1 = mx.sym.Activation(data=bn1, act_type='relu', name='relu1')
+    pool1 = mx.symbol.Pooling(data=relu1, global_pool=True, kernel=(7, 7), pool_type='avg', name='pool1')
+    flat = mx.symbol.Flatten(data=pool1)
+    fc1 = mx.symbol.FullyConnected(data=flat, num_hidden=num_classes, name='fc1')
+    return mx.symbol.SoftmaxOutput(data=fc1, name='softmax')
