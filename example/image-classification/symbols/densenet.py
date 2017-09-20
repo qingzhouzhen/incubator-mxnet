@@ -18,8 +18,6 @@ def BasicBlock(data, growth_rate, stride, name, bottle_neck=True, drop_out=0.0, 
     workspace : int
         Workspace used in convolution operator
     """
-    # import pdb
-    # pdb.set_trace()
 
     if bottle_neck:
         # the same as https://github.com/facebook/fb.resnet.torch#notes, a bit difference with origin paper
@@ -63,8 +61,6 @@ def DenseBlock(units_num, data, growth_rate, name, bottle_neck=True, drop_out=0.
     workspace : int
         Workspace used in convolution operator
     """
-    # import pdb
-    # pdb.set_trace()
 
     for i in range(units_num):
         Block = BasicBlock(data, growth_rate=growth_rate, stride=(1, 1), name=name + '_unit%d' % (i + 1),
@@ -72,7 +68,6 @@ def DenseBlock(units_num, data, growth_rate, name, bottle_neck=True, drop_out=0.
                            bn_mom=bn_mom, workspace=workspace)
         data = mx.symbol.Concat(data, Block, name=name + '_concat%d' % (i + 1))
     return data
-
 
 def TransitionBlock(num_stage, data, num_filter, stride, name, drop_out=0.0, bn_mom=0.9, workspace=512):
     """Return TransitionBlock Unit symbol for building DenseNet
@@ -103,28 +98,25 @@ def TransitionBlock(num_stage, data, num_filter, stride, name, drop_out=0.0, bn_
     return mx.symbol.Pooling(conv1, global_pool=False, kernel=(2, 2), stride=(2, 2), pool_type='avg',
                              name=name + '_pool%d' % (num_stage + 1))
 
-
 def get_symbol(num_classes, num_layers=121, reduction=0.5, drop_out=0.2, bottle_neck=True, bn_mom=0.9, 
                             workspace=512, num_stage=4, growth_rate=32,  **kwargs):
     """Return DenseNet symbol of imagenet
     Parameters
     ----------
-    units : list
-        Number of units in each stage
-    num_stage : int
-        Number of stage
-    growth_rate : int
-        Number of output channels
     num_class : int
         Ouput size of symbol
-    data_type : str
-        the type of dataset
+    num_layers : int
+        Number of layers of the whole net
     reduction : float
         Compression ratio. Default = 0.5
     drop_out : float
         Probability of an element to be zeroed. Default = 0.2
     workspace : int
         Workspace used in convolution operator
+    num_stage : int
+        Number of stage
+    growth_rate : int
+        Number of output channels
     """
 
     if num_layers == 121:
