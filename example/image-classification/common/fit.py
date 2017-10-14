@@ -85,7 +85,7 @@ def add_fit_args(parser):
                        help='the optimizer type')
     train.add_argument('--mom', type=float, default=0.9,
                        help='momentum for sgd')
-    train.add_argument('--wd', type=float, default=0.0001,
+    train.add_argument('--wd', type=float, default=0.0002,
                        help='weight decay for sgd')
     train.add_argument('--batch-size', type=int, default=128,
                        help='the batch size')
@@ -186,7 +186,7 @@ def fit(args, network, data_loader, **kwargs):
     # initializer   = mx.init.Xavier(factor_type="in", magnitude=2.34),
 
     # evaluation metrices
-    eval_metrics = ['accuracy']
+    eval_metrics = ['accuracy','ce']
     if args.top_k > 0:
         eval_metrics.append(mx.metric.create('top_k_accuracy', top_k=args.top_k))
 

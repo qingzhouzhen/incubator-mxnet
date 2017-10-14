@@ -39,12 +39,12 @@ if __name__ == '__main__':
         # data
         num_classes      = 1000,
         num_examples     = 1281167,
-        image_shape      = '3,224,224',
+        image_shape      = '3,192,192',
         min_random_scale = 1, # if input image has min size k, suggest to use
                               # 256.0/x, e.g. 0.533 for 480
         # train
         num_epochs       = 80,
-        lr_step_epochs   = '30,60',
+        lr_step_epochs   = '30,50,70,80,90,100,110',
         dtype            = 'float32'
     )
     args = parser.parse_args()
