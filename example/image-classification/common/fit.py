@@ -19,6 +19,7 @@ import mxnet as mx
 import logging
 import os
 import time
+from tensorboard import LogMetricsCallback
 
 def _get_lr_scheduler(args, kv):
     if 'lr_factor' not in args or args.lr_factor >= 1:
@@ -93,6 +94,8 @@ def add_fit_args(parser):
                        help='show progress for every n batches')
     train.add_argument('--model-prefix', type=str,
                        help='model prefix')
+    train.add_argument('--summary_url', type=str,
+                       help='log dirs')
     parser.add_argument('--monitor', dest='monitor', type=int, default=0,
                         help='log network parameters every N iters if larger than 0')
     train.add_argument('--load-epoch', type=int,
@@ -191,7 +194,7 @@ def fit(args, network, data_loader, **kwargs):
         eval_metrics.append(mx.metric.create('top_k_accuracy', top_k=args.top_k))
 
     # callbacks that run after each batch
-    batch_end_callbacks = [mx.callback.Speedometer(args.batch_size, args.disp_batches)]
+    batch_end_callbacks = [mx.callback.Speedometer(args.batch_size, args.disp_batches), LogMetricsCallback(args.summary_url)]
     if 'batch_end_callback' in kwargs:
         cbs = kwargs['batch_end_callback']
         batch_end_callbacks += cbs if isinstance(cbs, list) else [cbs]
