@@ -19,7 +19,7 @@ import mxnet as mx
 import logging
 import os
 import time
-from tensorboard import LogMetricsCallback
+from tensorboard_classify import LogMetricsCallback
 
 def _get_lr_scheduler(args, kv):
     if 'lr_factor' not in args or args.lr_factor >= 1:
@@ -194,7 +194,13 @@ def fit(args, network, data_loader, **kwargs):
         eval_metrics.append(mx.metric.create('top_k_accuracy', top_k=args.top_k))
 
     # callbacks that run after each batch
-    batch_end_callbacks = [mx.callback.Speedometer(args.batch_size, args.disp_batches), LogMetricsCallback(args.summary_url)]
+    try:
+        import tensorboard
+        batch_end_callbacks = [mx.callback.Speedometer(args.batch_size, args.disp_batches), LogMetricsCallback(args.summary_url)]
+    except ImportError:
+        batch_end_callbacks = [mx.callback.Speedometer(args.batch_size, args.disp_batches)]
+    import pdb
+    pdb.set_trace()
     if 'batch_end_callback' in kwargs:
         cbs = kwargs['batch_end_callback']
         batch_end_callbacks += cbs if isinstance(cbs, list) else [cbs]
