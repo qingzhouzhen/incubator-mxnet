@@ -107,7 +107,7 @@ elif dataset == 'imagenet':
                                               batch_size, (3, 299, 299))
     else:
         train_data, val_data = imagenet_iterator(opt.train_data, opt.val_data,
-                                                 batch_size, (3, 224, 224))
+                                                 batch_size, (3, 331, 331))
 elif dataset == 'dummy':
     if model_name == 'inceptionv3':
         train_data, val_data = dummy_iterator(batch_size, (3, 299, 299))

@@ -96,7 +96,8 @@ def imagenet_iterator(train_data, val_data, batch_size, data_shape, resize=-1):
         max_random_shear_ratio  = 0.1,
         max_random_aspect_ratio = 0.25,
         fill_value              = 127,
-        min_random_scale        = 0.533)
+        min_random_scale        = 0.7
+        )
 
     val = mx.io.ImageRecordIter(
         path_imgrec        = val_data,

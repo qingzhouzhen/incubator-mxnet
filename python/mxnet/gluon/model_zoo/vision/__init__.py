@@ -81,6 +81,8 @@ from .squeezenet import *
 
 from .vgg import *
 
+from .nasnet import *
+
 def get_model(name, **kwargs):
     """Returns a pre-defined model by name
 
@@ -124,6 +126,7 @@ def get_model(name, **kwargs):
               'squeezenet1.0': squeezenet1_0,
               'squeezenet1.1': squeezenet1_1,
               'inceptionv3': inception_v3,
+              'nasnet_large': nasnet_large,
              }
     name = name.lower()
     if name not in models:
