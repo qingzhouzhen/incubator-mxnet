@@ -11,7 +11,8 @@ class MaxPoolPad(nn.HybridBlock):
     def hybrid_forward(self, F, x):
         x = F.pad(x, mode="constant", constant_value=0, pad_width=(0, 0, 0, 0, 1, 0, 1, 0))
         x = self.pool(x)
-        x = x[:, :, 1:, 1:]
+        #x = x[:, :, 1:, 1:]
+        x = F.slice(x, begin=(None, None, 1, 1), end=(None, None, None, None))
         return x
 
 class AvgPoolPad(nn.HybridBlock):
@@ -23,7 +24,8 @@ class AvgPoolPad(nn.HybridBlock):
     def hybrid_forward(self, F, x):
         x = F.pad(x, mode="constant", constant_value=0, pad_width=(0, 0, 0, 0, 1, 0, 1, 0))
         x = self.pool(x)
-        x = x[:, :, 1:, 1:]
+        #x = x[:, :, 1:, 1:]
+        x = F.slice(x, begin=(None, None, 1, 1), end=(None, None, None, None))
         return x
 
 class SeparableConv2d(nn.HybridBlock):
@@ -93,7 +95,8 @@ class BranchSeparablesReduction(BranchSeparables):
         x = self.relu(x)
         x = F.pad(x, mode="constant", constant_value=0, pad_width=(0, 0, 0, 0, self.z_padding, 0, self.z_padding, 0))
         x = self.separable_1(x)
-        x = x[:, :, 1:, 1:]
+        #x = x[:, :, 1:, 1:]
+        x = F.slice(x, begin=(None, None, 1, 1), end=(None, None, None, None))
         x = self.bn_sep_1(x)
         x = self.relu1(x)
         x = self.separable_2(x)
@@ -192,7 +195,8 @@ class CellStem1(nn.HybridBlock):
         x_path1 = self.path_1(x_relu)
         # path 2
         x_path2 = F.pad(x_relu, mode="constant", constant_value=0, pad_width=(0, 0, 0, 0, 0, 1, 0, 1))
-        x_path2 = x_path2[:, :, 1:, 1:]
+        #x_path2 = x_path2[:, :, 1:, 1:]
+        x_path2 = F.slice(x_path2, begin=(None, None, 1, 1), end=(None, None, None, None))
         x_path2 = self.path_2_avgpool(x_path2)
         x_path2 = self.path_2_conv(x_path2)
         # final path
@@ -260,7 +264,8 @@ class FirstCell(nn.HybridBlock):
         x_path1 = self.path_1(x_relu)
         # path 2
         x_path2 = F.pad(x_relu, mode="constant", constant_value=0, pad_width=(0, 0, 0, 0, 0, 1, 0, 1))
-        x_path2 = x_path2[:, :, 1:, 1:]
+        #x_path2 = x_path2[:, :, 1:, 1:]
+        x_path2 = F.slice(x_path2, begin=(None, None, 1, 1), end=(None, None, None, None))
         x_path2 = self.path_2_avgpool(x_path2)
         x_path2 = self.path_2_conv(x_path2)
         # final path
@@ -546,7 +551,6 @@ class NASNetALarge(nn.HybridBlock):
 
     def classifier(self, x):
         x = self.relu(x)
-        print x.shape
         x = self.avgpool(x)
         x = self.flatten(x)
         x = self.dropout(x)

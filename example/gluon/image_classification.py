@@ -28,7 +28,7 @@ from mxnet.gluon.model_zoo import vision as models
 from mxnet import autograd as ag
 
 from data import *
-
+from batched_train import *
 # CLI
 parser = argparse.ArgumentParser(description='Train a model for image classification.')
 parser.add_argument('--dataset', type=str, default='mnist',
@@ -75,6 +75,8 @@ parser.add_argument('--load-epoch', type=int,
 parser.add_argument('--model-prefix', type=str, default='model/',
                     help='model prefix')
 parser.add_argument('--optimizer', type=str, default='sgd',
+                   help='the optimizer type')
+parser.add_argument('--update-step', type=int, default=1,
                    help='the optimizer type')
 opt = parser.parse_args()
 
@@ -250,19 +252,35 @@ if __name__ == '__main__':
         has_momentum = {'sgd', 'dcasgd', 'nag'}
         if opt.optimizer in has_momentum:
             optimizer_params['momentum'] = opt.momentum
-
-        mod.fit(train_data,
-                begin_epoch=opt.load_epoch if opt.load_epoch else 0,
-                eval_data = val_data,
-                num_epoch=opt.epochs,
-                kvstore=kv,
-                batch_end_callback =[mx.callback.Speedometer(batch_size, max(1, opt.log_interval))],
-                epoch_end_callback = checkpoint,
-                optimizer = 'sgd',
-                arg_params = arg_params,
-                aux_params = aux_params,
-                optimizer_params = optimizer_params,
-                initializer = mx.init.Xavier(magnitude=2))
+        batched_fit(
+            model=mod,
+            update_step=opt.update_step,
+            train_data=train_data,
+            begin_epoch=opt.load_epoch if opt.load_epoch else 0,
+            num_epoch=opt.epochs,
+            eval_data=val_data,
+            kvstore=kv,
+            optimizer='sgd',
+            optimizer_params=optimizer_params,
+            initializer=mx.init.Xavier(magnitude=2),
+            arg_params=arg_params,
+            aux_params=aux_params,
+            batch_end_callback=[mx.callback.Speedometer(batch_size, max(1, opt.log_interval))],
+            epoch_end_callback=checkpoint,
+            allow_missing=True,
+        )
+        # mod.fit(train_data,
+        #         begin_epoch=opt.load_epoch if opt.load_epoch else 0,
+        #         eval_data = val_data,
+        #         num_epoch=opt.epochs,
+        #         kvstore=kv,
+        #         batch_end_callback =[mx.callback.Speedometer(batch_size, max(1, opt.log_interval))],
+        #         epoch_end_callback = checkpoint,
+        #         optimizer = 'sgd',
+        #         arg_params = arg_params,
+        #         aux_params = aux_params,
+        #         optimizer_params = optimizer_params,
+        #         initializer = mx.init.Xavier(magnitude=2))
         mod.save_params('image-classifier-%s-%d-final.params'%(opt.model, opt.epochs))
     else:
         if opt.mode == 'hybrid':
